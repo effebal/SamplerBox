@@ -187,8 +187,8 @@ class StartSound:
         self.sd = None
         self.amixer = None
         self.mixer_card_index = 0
-        self.mixer_id = 0
-        self.mixer_control = 'PCM'
+        self.mixer_id = 1
+        self.mixer_control = 'Headphone'
 
         device_name = self.set_audio_device(gv.AUDIO_DEVICE_NAME)
 
@@ -199,8 +199,6 @@ class StartSound:
         #     self.start_alsa_mixer()
         if self.is_alsa_device(device_name):
             latency = gv.LATENCY
-            if 'bcm2835' in device_name:
-                latency = 'high'
             self.start_sounddevice_stream(latency=latency)
             self.start_alsa_mixer()
         else:
@@ -216,7 +214,8 @@ class StartSound:
     def start_sounddevice_stream(self, latency='low'):
 
         try:
-            self.sd = sounddevice.OutputStream(device=gv.AUDIO_DEVICE_ID, blocksize=512, latency=latency, samplerate=gv.SAMPLERATE, channels=2, dtype='int16', callback=audio_callback)
+            print latency
+            self.sd = sounddevice.OutputStream(device=gv.AUDIO_DEVICE_ID, blocksize=512, latency='low', samplerate=gv.SAMPLERATE, channels=2, dtype='int16', callback=audio_callback)
             self.sd.start()
             print '>>>> Opened audio device #%i (latency: %ims)' % (gv.AUDIO_DEVICE_ID, self.sd.latency * 1000)
         except:
@@ -245,39 +244,22 @@ class StartSound:
         if gv.IS_DEBIAN == False:
             return
 
-        if device_name == 'bcm2835':
-            mixer_card_index = 0
-        else:
-            mixer_card_index = re.search('\(hw:(.*),', device_name) # get x from (hw:x,y) in device name
-            mixer_card_index = int(mixer_card_index.group(1))
-
         available_mixer_types = alsaaudio.mixers() # returns a list of available mixer types. Usually only "PCM"
+        gv.USE_ALSA_MIXER = True
 
-        for mixer_control in available_mixer_types:
-            print '>>>> Trying mixer control "%s"' % mixer_control
-            for mixer_id in range(0, 6):
-                try:
-                    amixer = alsaaudio.Mixer(id=mixer_id, cardindex=mixer_card_index, control=mixer_control)
-                    print amixer.cardname()
-                    del amixer # No use for amixer in this method. Create instance in start_alsa_mixer()
-                    gv.USE_ALSA_MIXER = True
-                    self.mixer_id = mixer_id
-                    self.mixer_card_index = mixer_card_index  # save the found value
-                    self.mixer_control = mixer_control
-                    print '>>>> Found ALSA device: card id "%i", control "%s"' % (self.mixer_card_index, mixer_control)
+        mixer_id = 1
+        mixer_card_index = 0
+        mixer_control = 'Headphone'
 
-                    return True
+        amixer = alsaaudio.Mixer(id=mixer_id, cardindex=mixer_card_index, control=mixer_control, device='default')
+        self.mixer_id = mixer_id
+        self.mixer_card_index = mixer_card_index  # save the found value
+        self.mixer_control = mixer_control
+        print '>>>> Found ALSA device: card id "%i", control "%s"' % (self.mixer_card_index, mixer_control)
+        return True
 
-                except Exception as e:
-                    # gv.displayer.disp_change('Invalid mixerdev', line=2, timeout=0)
-                    # print 'Invalid mixer card id "%i" or control "%s"' % (gv.MIXER_CARD_ID, gv.MIXER_CONTROL)
-                    print 'Invalid mixer card id "%i" or control "%s"' % (mixer_card_index, mixer_control)
-                    # print 'Available devices (mixer card id is "x" in "(hw:x,y)" of device #%i):' % gv.AUDIO_DEVICE_ID
-                    # print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(e), e)
 
-        print '>>>> This is not an ALSA compatible device'
-        gv.USE_ALSA_MIXER = False
-        return False
+
 
     #################
     # End alsaaudio #
