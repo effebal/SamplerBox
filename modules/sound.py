@@ -1,3 +1,12 @@
+############################################################
+# Reworked for tinkerboard.
+# Removed the audio card identification and the alsa mixerd
+# TBD:
+#     insert mixer parameters in the globalvar
+#     insert mixer parameters in config.ini
+############################################################
+
+
 import samplerbox_audio
 import struct
 import wave
